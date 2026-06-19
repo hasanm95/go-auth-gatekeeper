@@ -16,8 +16,11 @@ services:
       - DB_NAME=${DB_NAME}
       - DATABASE_URL=${DATABASE_URL}
       - SECRET_KEY=${SECRET_KEY}
+      - REDIS_ADDR=cache:6379 
     depends_on:
       db:
+        condition: service_healthy
+      cache:
         condition: service_healthy
 
   db:
@@ -36,6 +39,22 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+  
+  cache:
+    image: redis:7-alpine
+    container_name: redis_cache
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck: # Added: Ensures Redis is ready before your Go app starts
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 volumes:
   pgdata:
+  redis_data:
+

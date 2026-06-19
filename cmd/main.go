@@ -11,6 +11,7 @@ import (
 
 	"github.com/hasanm95/go-auth-gatekeeper/internal/config"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 func main(){
@@ -34,10 +35,24 @@ func main(){
 	
 	if err := pool.Ping(pingCtx); err != nil {
 		pool.Close()
-		fmt.Printf("database ping failed: %v", err)
+		log.Fatalf("database ping failed: %v", err)
 	}
 
 	fmt.Print("Database connected \n")
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr: cfg.Redis_Addr,
+		Password: "",
+		DB: 0,
+	})
+	defer rdb.Close()
+
+	_, err = rdb.Ping(ctx).Result();
+	if err != nil {
+		log.Fatalf("Could not connect to Redis: %v", err)
+	}
+
+	fmt.Println("Successfully connected to Redis!")
 
 	server := &http.Server{
 		Addr: ":" + cfg.Port,

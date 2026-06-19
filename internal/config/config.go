@@ -11,6 +11,7 @@ type Config struct {
 	Port string `env:"PORT" envDefault:"8080"`
 	BaseURL string `env:"BASE_URL" envDefault:"http://localhost:8080"`
 	SecretKey string `env:"SECRET_KEY,required"`
+	Redis_Addr string `env:"REDIS_ADDR" envDefault:"http://localhost:6379"`
 }
 
 func Load() (*Config, error) {
