@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -9,9 +10,11 @@ import (
 	"time"
 
 	"github.com/hasanm95/go-auth-gatekeeper/internal/config"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main(){
+	ctx := context.Background()
 	cfg, err := config.Load()
 
 	if err != nil {
@@ -19,6 +22,22 @@ func main(){
 	}
 
 	baseURL := strings.TrimRight(cfg.BaseURL, "/") + "/"
+
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer pool.Close()
+	pingCtx, cancel := context.WithTimeout(ctx, 5 * time.Second)
+	defer cancel()
+	
+	if err := pool.Ping(pingCtx); err != nil {
+		pool.Close()
+		fmt.Printf("database ping failed: %v", err)
+	}
+
+	fmt.Print("Database connected \n")
 
 	server := &http.Server{
 		Addr: ":" + cfg.Port,
