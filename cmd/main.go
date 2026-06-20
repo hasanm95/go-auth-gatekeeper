@@ -11,6 +11,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hasanm95/go-auth-gatekeeper/internal/config"
+	"github.com/hasanm95/go-auth-gatekeeper/internal/handler"
+	"github.com/hasanm95/go-auth-gatekeeper/internal/repository"
+	"github.com/hasanm95/go-auth-gatekeeper/internal/service"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -55,11 +58,13 @@ func main(){
 
 	fmt.Println("Successfully connected to Redis!")
 
+	userRepo := repository.NewUserRepository(pool)
+	userService := service.NewUserService(userRepo)
+	handler := handler.Newhandler(*userService)
+
 	mux := chi.NewRouter()
 
-	mux.Post("/register", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
+	mux.Post("/register", handler.Register)
 	mux.Post("/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})

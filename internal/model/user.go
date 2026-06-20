@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"context"
+	"errors"
+	"time"
+)
 
 type User struct {
 	ID int `json:"id"`
@@ -19,3 +23,10 @@ type RegisterResponse struct {
 	Email string `json:"email"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+type UserRepository interface {
+	CreateUser (ctx context.Context, email string, password string) (*User, error)
+	GetUserByEmail(ctx context.Context, email string) (*User, error)
+}
+
+var ErrUserNotFound = errors.New("user not found")
