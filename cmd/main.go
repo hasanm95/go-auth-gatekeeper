@@ -65,8 +65,8 @@ func main(){
 
 	mux := chi.NewRouter()
 
-	mux.Post("/register", handler.Register)
-	mux.Post("/login", handler.Login)
+	mux.With(middleware.RateLimitMiddleware(rdb, 5, 1*time.Minute, "ratelimit:register")).Post("/register", handler.Register)
+	mux.With(middleware.RateLimitMiddleware(rdb, 5, 1*time.Minute, "ratelimit:login")).Post("/login", handler.Login)
 	mux.Post("/refresh", handler.Refresh)
 	mux.Post("/logout", handler.Logout)
 
