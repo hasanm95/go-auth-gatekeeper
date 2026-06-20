@@ -49,6 +49,11 @@ func AuthMiddleware(secretKey string, userService *service.UserService) func(htt
 				return 
 			}
 
+			if claims.TokenType != "access" {
+				RespondWithError(w, http.StatusUnauthorized, "invalid token type")
+				return 
+			}
+
 			isBlackListed, err := userService.IsTokenBlackListed(r.Context(), tokenString)
 
 			if err != nil {
