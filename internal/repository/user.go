@@ -22,7 +22,7 @@ func NewUserRepository (db *pgxpool.Pool) model.UserRepository {
 }
 
 func (r *pgUserRepository) CreateUser (ctx context.Context, email string, passwordHash string) (*model.User, error) {
-	query := `INSERT INTO users (email, password_hash) VALUES($1, $2) RETURNING id, email, password_hash, created_at`
+	query := `INSERT INTO users (email, password_hash) VALUES($1, $2) RETURNING id, email, password_hash, created_at, is_verified`
 
 	user := &model.User{}
 
@@ -31,6 +31,7 @@ func (r *pgUserRepository) CreateUser (ctx context.Context, email string, passwo
 		&user.Email,
 		&user.PasswordHash,
 		&user.CreatedAt,
+		&user.IsVerified,
 	)
 
 	if err != nil {
@@ -51,15 +52,15 @@ func (r *pgUserRepository) CreateUser (ctx context.Context, email string, passwo
 }
 
 func (r *pgUserRepository) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
-	query := `SELECT id, email, password_hash, created_at FROM users WHERE email = $1`
+	query := `SELECT id, email, password_hash, created_at, is_verified FROM users WHERE email = $1`
 
 	row := r.db.QueryRow(ctx, query, email)
 
 	var user model.User
 
-	if err := row.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.CreatedAt); err != nil {
+	if err := row.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.IsVerified); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, model.ErrUserNotFound   // নিজস্ব sentinel error
+			return nil, model.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("querying user by email: %w", err)
 	}
@@ -68,18 +69,35 @@ func (r *pgUserRepository) GetUserByEmail(ctx context.Context, email string) (*m
 } 
 
 func (r *pgUserRepository) GetUserByID(ctx context.Context, id int64) (*model.User, error){
-	query := `SELECT id, email, password_hash, created_at FROM users WHERE id = $1`
+	query := `SELECT id, email, password_hash, created_at, is_verified FROM users WHERE id = $1`
 
 	row := r.db.QueryRow(ctx, query, id)
 
 	user := &model.User{}
 
-	if err := row.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.CreatedAt); err != nil {
+	if err := row.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.IsVerified); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, model.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("querying user by id: %w", err)
 	}
 
+	fmt.Printf("DEBUG REPO: User ID %d, IsVerified in DB scan is: %t\n", user.ID, user.IsVerified)
+
 	return user, nil
+}
+
+func (r *pgUserRepository) MarkUserVerified(ctx context.Context, userID int64) error {
+	query := `UPDATE users SET is_verified = true WHERE id = $1`
+
+	commandTag, err := r.db.Exec(ctx, query, userID)
+	if err != nil {
+		return fmt.Errorf("updating is verified: %w", err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		return fmt.Errorf("user with ID %d not found", userID) 
+	}
+
+	return nil
 }

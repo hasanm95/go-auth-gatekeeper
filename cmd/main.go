@@ -69,6 +69,7 @@ func main(){
 	mux.With(middleware.RateLimitMiddleware(rdb, 5, 1*time.Minute, "ratelimit:login")).Post("/login", handler.Login)
 	mux.Post("/refresh", handler.Refresh)
 	mux.Post("/logout", handler.Logout)
+	mux.Get("/verify", handler.VerifyEmail)
 
 	mux.Group(func(r chi.Router) {
 		r.Use(middleware.AuthMiddleware(cfg.SecretKey, userService))

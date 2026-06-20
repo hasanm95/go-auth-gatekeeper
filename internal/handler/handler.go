@@ -72,6 +72,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		ID: user.ID,
 		Email: user.Email,
 		CreatedAt: user.CreatedAt,
+		IsVerified: user.IsVerified,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -107,7 +108,7 @@ func (h *Handler) Login (w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, refreshToken, err := h.svc.LoginUser(r.Context(), req.Email, req.Password)
+	accessToken, refreshToken, isVerified, err := h.svc.LoginUser(r.Context(), req.Email, req.Password)
 
 	if err != nil {
 		if errors.Is(err, model.ErrInvalidCredentials) {
@@ -121,6 +122,7 @@ func (h *Handler) Login (w http.ResponseWriter, r *http.Request) {
 
 	response := &model.LoginResponse{
 		AccessToken: accessToken,
+		IsVerified: isVerified,
 	}
 
 	cookie := &http.Cookie{
@@ -229,10 +231,33 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		ID: user.ID,
 		Email: user.Email,
 		CreatedAt: user.CreatedAt,
+		IsVerified: user.IsVerified,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
+}
 
+func (h *Handler) VerifyEmail(w http.ResponseWriter, r *http.Request){
+	token := r.URL.Query().Get("token")
+
+	log.Print("token: ", token)
+
+	if token == "" {
+		http.Error(w, "missing token", http.StatusBadRequest)
+		return
+	}
+
+	err := h.svc.VerifyEmail(r.Context(), token)
+
+	if err != nil {
+		http.Error(w, "invalid or expired verifiaction link", http.StatusBadRequest)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "verified",
+	})
 }

@@ -10,6 +10,7 @@ type User struct {
 	Email string `json:"email"`
 	CreatedAt time.Time `json:"created_at"`
 	PasswordHash string `json:"-"`
+	IsVerified bool `json:"is_verified"`
 }
 
 type RegisterRequest struct {
@@ -21,12 +22,14 @@ type RegisterResponse struct {
 	ID int64 `json:"id"`
 	Email string `json:"email"`
 	CreatedAt time.Time `json:"created_at"`
+	IsVerified bool `json:"is_verified"`
 }
 
 type UserRepository interface {
 	CreateUser (ctx context.Context, email string, password string) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	GetUserByID(ctx context.Context, id int64) (*User, error)
+	MarkUserVerified(ctx context.Context, userID int64) error
 }
 
 type LoginRequest struct {
@@ -36,4 +39,5 @@ type LoginRequest struct {
 
 type LoginResponse struct {
 	AccessToken string `json:"access_token"`
+	IsVerified bool `json:"is_verified"`
 }

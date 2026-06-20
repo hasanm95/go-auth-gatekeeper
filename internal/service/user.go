@@ -43,38 +43,49 @@ func (s *UserService) RegisterUser(ctx context.Context, email string, password s
 		return nil, fmt.Errorf("hashing password: %w", err)
 	}
 
-	return s.repo.CreateUser(ctx, email, passwordHash)
+	user, err := s.repo.CreateUser(ctx, email, passwordHash)
+
+	if err != nil {
+		return nil, err
+	}
+
+	verificationToken, err := GenerateToken(user.ID, s.cfg.SecretKey, 60 * time.Minute, "email_verification")
+
+	verificationLink := s.cfg.BaseURL + "/verify?token=" + verificationToken
+	log.Printf("VERIFICATION LINK for %s: %s", email, verificationLink)
+
+	return user, nil
 }
 
-func (s *UserService) LoginUser(ctx context.Context, email, password string) (string, string, error) {
+func (s *UserService) LoginUser(ctx context.Context, email, password string) (string, string, bool, error) {
 	user, err := s.repo.GetUserByEmail(ctx, email)
 
 	if err != nil {
 		if !errors.Is(err, model.ErrUserNotFound) {
-			return "", "", model.ErrInvalidCredentials
+			return "", "", false, model.ErrInvalidCredentials
 		}
-		return "", "", err 
+		return "", "", false, err 
 	}
 
 	isPasswordOk := CheckPassword(password, user.PasswordHash)
 
 	if !isPasswordOk {
-		return "", "", model.ErrInvalidCredentials
+		return "", "", false, model.ErrInvalidCredentials
 	} 
 
 	accessToken, err := GenerateToken(user.ID, s.cfg.SecretKey, 15 * time.Minute, "access")
 
 	if err != nil {
-		return "", "", err
+		return "", "", false, err
 	}
 
 	refreshToken, err := GenerateToken(user.ID, s.cfg.SecretKey, 7 * 24 * time.Hour, "refresh")
 
 	if err != nil {
-		return "", "", err
+		return "", "", false, err
 	}
 
-	return accessToken, refreshToken, nil
+	return accessToken, refreshToken, user.IsVerified, nil
 }
 
 func (s *UserService) RefreshToken(ctx context.Context, refreshTokenString string) (string, error) {
@@ -165,4 +176,18 @@ func (s *UserService) LogoutUser(ctx context.Context, accessToken, refreshToken 
 
 func (s *UserService) GetUserByID(ctx context.Context, id int64) (*model.User, error) {
 	return s.repo.GetUserByID(ctx, id)
+}
+
+func (s *UserService) VerifyEmail(ctx context.Context, token string) error {
+	claims, err := ValidateToken(token, s.cfg.SecretKey)
+
+	if err != nil {
+		return err
+	}
+
+	if claims.TokenType != "email_verification" {
+		return fmt.Errorf("invalid token type")
+	}
+
+	return s.repo.MarkUserVerified(ctx, claims.UserID)
 }
