@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator"
+	"github.com/hasanm95/go-auth-gatekeeper/internal/config"
 	"github.com/hasanm95/go-auth-gatekeeper/internal/model"
 	"github.com/hasanm95/go-auth-gatekeeper/internal/service"
 )
@@ -17,12 +18,14 @@ import (
 type Handler struct {
 	svc service.UserService
 	validate  *validator.Validate
+	cfg *config.Config
 }
 
-func Newhandler(svc service.UserService) *Handler {
+func Newhandler(svc service.UserService, cfg *config.Config) *Handler {
 	return &Handler{
 		svc: svc,
 		validate: validator.New(),
+		cfg: cfg,
 	}
 }
 
@@ -137,6 +140,8 @@ func (h *Handler) Login (w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) Refresh (w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("refresh_token")
+	log.Printf("refresh_token %v", cookie)
+
 
 	if err != nil {
 		if errors.Is(err, http.ErrNoCookie){
@@ -149,6 +154,7 @@ func (h *Handler) Refresh (w http.ResponseWriter, r *http.Request) {
 	}
 
 	tokenString := cookie.Value
+	log.Printf("refresh_tokenString %v", tokenString)
 
 	newAccessToken, err := h.svc.RefreshToken(r.Context(), tokenString)
 	if err != nil {
@@ -188,7 +194,7 @@ func (h *Handler) Logout (w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   h.cfg.Env == "production",
 		SameSite: http.SameSiteStrictMode,
 	})
 

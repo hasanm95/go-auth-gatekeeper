@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -61,6 +62,8 @@ func ValidateToken(tokenString, secretKey string) (*CustomClaims, error){
 		}
 		return []byte(secretKey), nil
 	})
+
+	log.Printf("Claimes %v", claims)
 
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired){

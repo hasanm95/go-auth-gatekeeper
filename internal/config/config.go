@@ -12,6 +12,7 @@ type Config struct {
 	BaseURL string `env:"BASE_URL" envDefault:"http://localhost:8080"`
 	SecretKey string `env:"SECRET_KEY,required"`
 	Redis_Addr string `env:"REDIS_ADDR" envDefault:"http://localhost:6379"`
+	Env string `env:"Env" envDefault:"development"`
 }
 
 func Load() (*Config, error) {

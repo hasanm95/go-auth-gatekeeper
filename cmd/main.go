@@ -60,7 +60,7 @@ func main(){
 
 	userRepo := repository.NewUserRepository(pool)
 	userService := service.NewUserService(userRepo, cfg, rdb)
-	handler := handler.Newhandler(*userService)
+	handler := handler.Newhandler(*userService, cfg)
 
 	mux := chi.NewRouter()
 
