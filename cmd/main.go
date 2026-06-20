@@ -66,9 +66,7 @@ func main(){
 
 	mux.Post("/register", handler.Register)
 	mux.Post("/login", handler.Login)
-	mux.Post("/refresh", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
+	mux.Post("/refresh", handler.Refresh)
 	mux.Post("/logout", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})

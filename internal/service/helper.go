@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -24,7 +25,7 @@ func CheckPassword(password, hash string) bool {
 
 type CustomClaims struct {
 	UserID int64 `json:"user_id"`
-	 TokenType string `json:"token_type"`
+	TokenType string `json:"token_type"`
 	jwt.RegisteredClaims
 }
 
@@ -49,4 +50,28 @@ func GenerateToken(userID int64, secretKey string, duration time.Duration, token
 	}
 
 	return signedToken, nil
+}
+
+func ValidateToken(tokenString, secretKey string) (*CustomClaims, error){
+	claims := &CustomClaims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return []byte(secretKey), nil
+	})
+
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired){
+			return nil, errors.New("token has expired")
+		}
+		return nil, fmt.Errorf("invalid token: %w", err)
+	}
+
+	if !token.Valid {
+		return nil, errors.New("invalid token signature")
+	}
+
+	return claims, nil
 }

@@ -53,8 +53,6 @@ func (s *UserService) LoginUser(ctx context.Context, email, password string) (st
 		return "", "", err 
 	}
 
-
-
 	isPasswordOk := CheckPassword(password, user.PasswordHash)
 
 	if !isPasswordOk {
@@ -74,4 +72,24 @@ func (s *UserService) LoginUser(ctx context.Context, email, password string) (st
 	}
 
 	return accessToken, refreshToken, nil
+}
+
+func (s *UserService) RefreshToken(ctx context.Context, refreshTokenString string) (string, error) {
+	claims, err := ValidateToken(refreshTokenString, s.cfg.SecretKey)
+
+	if err != nil {
+		return "", err
+	}
+
+	if claims.TokenType != "refresh" {
+		return "", fmt.Errorf("invalid token type")
+	}
+
+	newAccessToken, err := GenerateToken(claims.UserID, s.cfg.SecretKey, 15 * time.Minute, "access")
+
+	if err != nil {
+		return "", err
+	}
+
+	return newAccessToken, nil
 }

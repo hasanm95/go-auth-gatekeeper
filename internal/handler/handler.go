@@ -112,6 +112,7 @@ func (h *Handler) Login (w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("login error: %v", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return;
 	}
 
 	response := &model.LoginResponse{
@@ -130,6 +131,37 @@ func (h *Handler) Login (w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	http.SetCookie(w, cookie)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+func (h *Handler) Refresh (w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("refresh_token")
+
+	if err != nil {
+		if errors.Is(err, http.ErrNoCookie){
+			http.Error(w, "Refresh token missing", http.StatusUnauthorized)
+			return;
+		}
+
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	tokenString := cookie.Value
+
+	newAccessToken, err := h.svc.RefreshToken(r.Context(), tokenString)
+	if err != nil {
+		log.Printf("refresh failed: %v", err)
+		http.Error(w, "invalid or expired session", http.StatusUnauthorized)
+		return
+	}
+
+	response := &model.LoginResponse{
+		AccessToken: newAccessToken,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
