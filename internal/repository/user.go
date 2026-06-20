@@ -66,3 +66,20 @@ func (r *pgUserRepository) GetUserByEmail(ctx context.Context, email string) (*m
 
 	return &user, nil
 } 
+
+func (r *pgUserRepository) GetUserByID(ctx context.Context, id int64) (*model.User, error){
+	query := `SELECT id, email, password_hash, created_at FROM users WHERE id = $1`
+
+	row := r.db.QueryRow(ctx, query, id)
+
+	user := &model.User{}
+
+	if err := row.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.CreatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, model.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("querying user by id: %w", err)
+	}
+
+	return user, nil
+}

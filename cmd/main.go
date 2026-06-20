@@ -14,6 +14,7 @@ import (
 	"github.com/hasanm95/go-auth-gatekeeper/internal/handler"
 	"github.com/hasanm95/go-auth-gatekeeper/internal/repository"
 	"github.com/hasanm95/go-auth-gatekeeper/internal/service"
+	"github.com/hasanm95/go-auth-gatekeeper/pkg/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -68,6 +69,11 @@ func main(){
 	mux.Post("/login", handler.Login)
 	mux.Post("/refresh", handler.Refresh)
 	mux.Post("/logout", handler.Logout)
+
+	mux.Group(func(r chi.Router) {
+		r.Use(middleware.AuthMiddleware(cfg.SecretKey, userService))
+		r.Get("/me", handler.Me)
+	})
 
 
 	server := &http.Server{

@@ -26,6 +26,7 @@ type RegisterResponse struct {
 type UserRepository interface {
 	CreateUser (ctx context.Context, email string, password string) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
+	GetUserByID(ctx context.Context, id int64) (*User, error)
 }
 
 type LoginRequest struct {

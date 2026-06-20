@@ -162,3 +162,7 @@ func (s *UserService) LogoutUser(ctx context.Context, accessToken, refreshToken 
 
     return firstErr
 }
+
+func (s *UserService) GetUserByID(ctx context.Context, id int64) (*model.User, error) {
+	return s.repo.GetUserByID(ctx, id)
+}

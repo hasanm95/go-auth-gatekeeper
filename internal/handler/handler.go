@@ -204,3 +204,35 @@ func (h *Handler) Logout (w http.ResponseWriter, r *http.Request) {
 		"message": "logged out",
 	})
 }
+
+func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("userID").(int64)
+
+
+	if !ok {
+		http.Error(w, "userID is missing from context", http.StatusInternalServerError)
+		return
+	}
+
+	user, err := h.svc.GetUserByID(r.Context(), userID)
+
+	if err != nil {
+		if !errors.Is(err, model.ErrUserNotFound) {
+			http.Error(w, model.ErrUserNotFound.Error(), http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := &model.RegisterResponse{
+		ID: user.ID,
+		Email: user.Email,
+		CreatedAt: user.CreatedAt,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+
+}
