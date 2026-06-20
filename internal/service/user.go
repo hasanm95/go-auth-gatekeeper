@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/hasanm95/go-auth-gatekeeper/internal/model"
-	"github.com/hasanm95/go-auth-gatekeeper/internal/utils"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
@@ -34,11 +34,24 @@ func (s *UserService) RegisterUser(ctx context.Context, email string, password s
 		return nil, fmt.Errorf("checking existing user: %w", err)
 	}
 
-	passwordHash, err := utils.HashPassword(password)
+	passwordHash, err := HashPassword(password)
 
 	if err != nil {
 		return nil, fmt.Errorf("hashing password: %w", err)
 	}
 
 	return s.repo.CreateUser(ctx, email, passwordHash)
+}
+
+func HashPassword(password string)(string, error){
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
+}
+
+func CheckPassword(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }
