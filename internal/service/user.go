@@ -88,6 +88,7 @@ func (s *UserService) RefreshToken(ctx context.Context, refreshTokenString strin
 		return "", fmt.Errorf("invalid token type")
 	}
 
+	log.Printf("REFRESH - checking token: %s", refreshTokenString)
 	isBlackListed, err := s.IsTokenBlackListed(ctx, refreshTokenString)
 
 	if err != nil {
@@ -137,6 +138,8 @@ func (s *UserService) LogoutUser(ctx context.Context, accessToken, refreshToken 
 
     if accessToken != "" {
         if accessClaims, err := ValidateToken(accessToken, s.cfg.SecretKey); err == nil {
+
+			log.Printf("LOGOUT - blacklisting access token: %s", accessToken)	
             if blacklistErr := s.BlacklistToken(ctx, accessToken, accessClaims.ExpiresAt.Time); blacklistErr != nil {
                 log.Printf("failed to blacklist access token: %v", blacklistErr)
                 firstErr = blacklistErr
@@ -146,6 +149,8 @@ func (s *UserService) LogoutUser(ctx context.Context, accessToken, refreshToken 
 
     if refreshToken != "" {
         if refreshClaims, err := ValidateToken(refreshToken, s.cfg.SecretKey); err == nil {
+
+			log.Printf("LOGOUT - blacklisting refresh token: %s", refreshToken)	
             if blacklistErr := s.BlacklistToken(ctx, refreshToken, refreshClaims.ExpiresAt.Time); blacklistErr != nil {
                 log.Printf("failed to blacklist refresh token: %v", blacklistErr)
                 if firstErr == nil {
