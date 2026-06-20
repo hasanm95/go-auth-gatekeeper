@@ -4,19 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/hasanm95/go-auth-gatekeeper/internal/config"
 	"github.com/hasanm95/go-auth-gatekeeper/internal/model"
+	"github.com/redis/go-redis/v9"
 )
 
 type UserService struct {
 	repo model.UserRepository
 	cfg *config.Config
+	redisClient *redis.Client
 }
 
-func NewUserService (r model.UserRepository, cfg *config.Config) *UserService{
-	return &UserService{repo: r, cfg: cfg}
+func NewUserService (r model.UserRepository, cfg *config.Config, redisClient *redis.Client) *UserService{
+	return &UserService{repo: r, cfg: cfg, redisClient: redisClient}
 }
 
 func (s *UserService) GetUser(ctx context.Context, email string) (*model.User, error) {
@@ -85,6 +88,16 @@ func (s *UserService) RefreshToken(ctx context.Context, refreshTokenString strin
 		return "", fmt.Errorf("invalid token type")
 	}
 
+	isBlackListed, err := s.IsTokenBlackListed(ctx, refreshTokenString)
+
+	if err != nil {
+		return "", err
+	}
+
+	if isBlackListed {
+		return "", fmt.Errorf("token has been revoked")
+	}
+
 	newAccessToken, err := GenerateToken(claims.UserID, s.cfg.SecretKey, 15 * time.Minute, "access")
 
 	if err != nil {
@@ -92,4 +105,55 @@ func (s *UserService) RefreshToken(ctx context.Context, refreshTokenString strin
 	}
 
 	return newAccessToken, nil
+}
+
+func (s *UserService) BlacklistToken(ctx context.Context, tokenString string, expiresAt time.Time) error{
+	ttl := time.Until(expiresAt)
+
+	if ttl < 0 {
+		return nil
+	}
+
+	key := "blacklist:" + tokenString
+
+	err := s.redisClient.Set(ctx, key, "true", ttl).Err()
+
+	return err
+}
+
+func (s *UserService) IsTokenBlackListed(ctx context.Context, tokenString string) (bool, error) {
+	key := "blacklist:" + tokenString
+	result, err := s.redisClient.Exists(ctx, key).Result()
+
+	if err != nil {
+		return false, fmt.Errorf("failed to check key existence: %w", err)
+	}
+
+	return result > 0, nil
+}
+
+func (s *UserService) LogoutUser(ctx context.Context, accessToken, refreshToken string) error {
+    var firstErr error
+
+    if accessToken != "" {
+        if accessClaims, err := ValidateToken(accessToken, s.cfg.SecretKey); err == nil {
+            if blacklistErr := s.BlacklistToken(ctx, accessToken, accessClaims.ExpiresAt.Time); blacklistErr != nil {
+                log.Printf("failed to blacklist access token: %v", blacklistErr)
+                firstErr = blacklistErr
+            }
+        }
+    }
+
+    if refreshToken != "" {
+        if refreshClaims, err := ValidateToken(refreshToken, s.cfg.SecretKey); err == nil {
+            if blacklistErr := s.BlacklistToken(ctx, refreshToken, refreshClaims.ExpiresAt.Time); blacklistErr != nil {
+                log.Printf("failed to blacklist refresh token: %v", blacklistErr)
+                if firstErr == nil {
+                    firstErr = blacklistErr
+                }
+            }
+        }
+    }
+
+    return firstErr
 }
