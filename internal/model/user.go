@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"errors"
 	"time"
 )
 
@@ -28,5 +27,3 @@ type UserRepository interface {
 	CreateUser (ctx context.Context, email string, password string) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 }
-
-var ErrUserNotFound = errors.New("user not found")
