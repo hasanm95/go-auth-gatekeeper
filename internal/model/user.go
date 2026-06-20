@@ -7,7 +7,7 @@ import (
 )
 
 type User struct {
-	ID int `json:"id"`
+	ID int64 `json:"id"`
 	Email string `json:"email"`
 	CreatedAt time.Time `json:"created_at"`
 	PasswordHash string `json:"-"`
@@ -19,7 +19,7 @@ type RegisterRequest struct {
 }
 
 type RegisterResponse struct {
-	ID int `json:"id"`
+	ID int64 `json:"id"`
 	Email string `json:"email"`
 	CreatedAt time.Time `json:"created_at"`
 }

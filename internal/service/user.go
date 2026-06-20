@@ -22,20 +22,22 @@ func (s *UserService) GetUser(ctx context.Context, email string) (*model.User, e
 }
 
 func (s *UserService) RegisterUser(ctx context.Context, email string, password string) (*model.User, error){
-	_, err := s.repo.GetUserByEmail(ctx, email)
+	user, err := s.repo.GetUserByEmail(ctx, email)
+
+	fmt.Print(user)
 
 	if err == nil {
 		return nil, fmt.Errorf("user already exists with email: %v", email)
 	}
 
 	if !errors.Is(err, model.ErrUserNotFound) {
-		return nil, fmt.Errorf("error checking existing user: %w", err)
+		return nil, fmt.Errorf("checking existing user: %w", err)
 	}
 
 	passwordHash, err := utils.HashPassword(password)
 
 	if err != nil {
-		return nil, fmt.Errorf("Error hashing password: %w", err)
+		return nil, fmt.Errorf("hashing password: %w", err)
 	}
 
 	return s.repo.CreateUser(ctx, email, passwordHash)

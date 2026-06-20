@@ -52,7 +52,7 @@ func (r *pgUserRepository) CreateUser (ctx context.Context, email string, passwo
 
 func (r *pgUserRepository) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
 	query := `SELECT id, email, password_hash, created_at FROM users WHERE email = $1`
-	
+
 	row := r.db.QueryRow(ctx, query, email)
 
 	var user model.User
@@ -61,7 +61,7 @@ func (r *pgUserRepository) GetUserByEmail(ctx context.Context, email string) (*m
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, model.ErrUserNotFound   // নিজস্ব sentinel error
 		}
-		return nil, err
+		return nil, fmt.Errorf("querying user by email: %w", err)
 	}
 
 	return &user, nil
