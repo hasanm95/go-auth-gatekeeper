@@ -13,6 +13,7 @@ import (
 	"github.com/hasanm95/go-auth-gatekeeper/internal/config"
 	"github.com/hasanm95/go-auth-gatekeeper/internal/model"
 	"github.com/hasanm95/go-auth-gatekeeper/internal/service"
+	"github.com/hasanm95/go-auth-gatekeeper/pkg/middleware"
 )
 
 type Handler struct {
@@ -206,9 +207,7 @@ func (h *Handler) Logout (w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("userID").(int64)
-
-
+	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok {
 		http.Error(w, "userID is missing from context", http.StatusInternalServerError)
 		return
@@ -217,11 +216,12 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	user, err := h.svc.GetUserByID(r.Context(), userID)
 
 	if err != nil {
-		if !errors.Is(err, model.ErrUserNotFound) {
-			http.Error(w, model.ErrUserNotFound.Error(), http.StatusNotFound)
+		if errors.Is(err, model.ErrUserNotFound) {
+			http.Error(w, "user not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("get user by id error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 

@@ -10,7 +10,9 @@ import (
 	"github.com/hasanm95/go-auth-gatekeeper/internal/service"
 )
 
-const userIDKey string = "userID"
+type contextKey string
+
+const UserIDKey contextKey = "userID"
 
 type ErrorResponse struct {
 	Error string `json:"error"`
@@ -23,11 +25,15 @@ func RespondWithError(w http.ResponseWriter, statusCode int, message string) {
 	_ = json.NewEncoder(w).Encode(ErrorResponse{Error: message})
 }
 
+func UserIDFromContext(ctx context.Context) (int64, bool) {
+    id, ok := ctx.Value(UserIDKey).(int64)
+    return id, ok
+}
+
 func AuthMiddleware(secretKey string, userService *service.UserService) func(http.Handler) http.Handler{
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
-			log.Print("authHeader======>", authHeader)
 
 			if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 				RespondWithError(w, http.StatusUnauthorized, "missing token")
@@ -46,7 +52,9 @@ func AuthMiddleware(secretKey string, userService *service.UserService) func(htt
 			isBlackListed, err := userService.IsTokenBlackListed(r.Context(), tokenString)
 
 			if err != nil {
+				log.Printf("blacklist check failed: %v", err)
 				RespondWithError(w, http.StatusInternalServerError, "Something went wrong")
+				return 
 			}
 
 			if isBlackListed {
@@ -54,7 +62,7 @@ func AuthMiddleware(secretKey string, userService *service.UserService) func(htt
 				return 
 			}
 
-			ctx := context.WithValue(r.Context(), userIDKey, claims.UserID)
+			ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
 
 
 			next.ServeHTTP(w, r.WithContext(ctx))
