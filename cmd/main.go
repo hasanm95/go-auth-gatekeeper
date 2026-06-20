@@ -59,15 +59,13 @@ func main(){
 	fmt.Println("Successfully connected to Redis!")
 
 	userRepo := repository.NewUserRepository(pool)
-	userService := service.NewUserService(userRepo)
+	userService := service.NewUserService(userRepo, cfg)
 	handler := handler.Newhandler(*userService)
 
 	mux := chi.NewRouter()
 
 	mux.Post("/register", handler.Register)
-	mux.Post("/login", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
+	mux.Post("/login", handler.Login)
 	mux.Post("/refresh", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})

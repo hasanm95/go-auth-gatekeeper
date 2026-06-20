@@ -27,3 +27,12 @@ type UserRepository interface {
 	CreateUser (ctx context.Context, email string, password string) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 }
+
+type LoginRequest struct {
+	Email string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,gte=8"`
+}
+
+type LoginResponse struct {
+	AccessToken string `json:"access_token"`
+}
