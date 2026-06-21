@@ -101,3 +101,19 @@ func (r *pgUserRepository) MarkUserVerified(ctx context.Context, userID int64) e
 
 	return nil
 }
+
+func (r *pgUserRepository) UpdatePassword(ctx context.Context, userID int64, newPassword string) error {
+	query := `UPDATE users	SET password_hash = $1 WHERE id = $2`
+
+	commandTag, err := r.db.Exec(ctx, query, newPassword, userID)
+
+	if err != nil {
+		return fmt.Errorf("udpating password: %w", err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		return fmt.Errorf("user with id %d not found", userID)
+	}
+
+	return nil
+}

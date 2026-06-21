@@ -191,3 +191,62 @@ func (s *UserService) VerifyEmail(ctx context.Context, token string) error {
 
 	return s.repo.MarkUserVerified(ctx, claims.UserID)
 }
+
+func (s *UserService) ForgotPassword(ctx context.Context, email string) error {
+	user, err := s.repo.GetUserByEmail(ctx, email)
+
+	if err != nil {
+		return nil
+	}
+
+	resetToken, err := GenerateToken(user.ID, s.cfg.SecretKey, 15 * time.Minute, "password_reset")
+
+	if err != nil {
+		log.Print("error gernerating token: %w", err)
+		return nil;
+	}
+
+	resetLink := s.cfg.BaseURL + "/reset-password?token=" + resetToken
+
+	log.Printf("PASSWORD RESET LINK for %s: %s", email, resetLink)
+
+	return nil
+}
+
+func (s * UserService) ResetPassword (ctx context.Context, tokenString string, newPassword string) error {
+	claims, err := ValidateToken(tokenString, s.cfg.SecretKey)
+
+	if err != nil {
+		return fmt.Errorf("invalid or expired reset link: %w", err)
+	}
+
+	if claims.TokenType != "password_reset" {
+		return fmt.Errorf("invalid token type")
+	}
+
+	isBlackListed, err := s.IsTokenBlackListed(ctx,tokenString)
+
+	if err != nil {
+		return err
+	}
+
+	if isBlackListed {
+		return fmt.Errorf("token has been revoked")
+	}
+
+	newHash, err := HashPassword(newPassword)
+
+	if err != nil {
+		return err
+	}
+
+	err = s.repo.UpdatePassword(ctx, claims.UserID, newHash)
+
+	if err != nil {
+		return err
+	}
+
+	s.BlacklistToken(ctx, tokenString, claims.ExpiresAt.Time)
+
+	return nil
+}

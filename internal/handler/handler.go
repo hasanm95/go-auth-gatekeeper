@@ -82,7 +82,6 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Login (w http.ResponseWriter, r *http.Request) {
-	fmt.Print("Login request")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed!!!", http.StatusMethodNotAllowed)
 		return
@@ -242,8 +241,6 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) VerifyEmail(w http.ResponseWriter, r *http.Request){
 	token := r.URL.Query().Get("token")
 
-	log.Print("token: ", token)
-
 	if token == "" {
 		http.Error(w, "missing token", http.StatusBadRequest)
 		return
@@ -259,5 +256,90 @@ func (h *Handler) VerifyEmail(w http.ResponseWriter, r *http.Request){
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "verified",
+	})
+}
+
+func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+	defer r.Body.Close()
+
+	req := &model.ForgotPasswordRequest{}
+
+	err := json.NewDecoder(r.Body).Decode(req)
+
+	if err != nil {
+		if errors.Is(err, io.EOF){
+			http.Error(w, "Request body cannot be empty", http.StatusBadRequest)
+			return;
+		}
+
+		http.Error(w, fmt.Sprintf("Malformed JSON: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		http.Error(w, fmt.Sprintf("validation failed: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	err = h.svc.ForgotPassword(r.Context(), req.Email)
+
+	if err != nil {
+		log.Print(err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "if that email exists, a reset link has been sent",
+	})
+}
+
+func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed!!!", http.StatusMethodNotAllowed)
+		return
+	}
+	defer r.Body.Close()
+
+	token := r.URL.Query().Get("token")
+
+	if token == "" {
+		http.Error(w, "missing token", http.StatusBadRequest)
+		return
+	}
+
+	req := &model.ResetPasswordRequest{}
+
+	err := json.NewDecoder(r.Body).Decode(req)
+
+	if err != nil {
+		if errors.Is(err, io.EOF){
+			http.Error(w, "Request body cannot be empty", http.StatusBadRequest)
+			return;
+		}
+
+		http.Error(w, fmt.Sprintf("Malformed JSON: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		http.Error(w, fmt.Sprintf("validation failed: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	err = h.svc.ResetPassword(r.Context(), token, req.NewPassword)
+
+	if err != nil {
+		http.Error(w, "invali or expired reset link", http.StatusBadRequest)
+		return
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "password reset successfully",
 	})
 }

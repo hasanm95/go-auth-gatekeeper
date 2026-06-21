@@ -30,6 +30,7 @@ type UserRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	GetUserByID(ctx context.Context, id int64) (*User, error)
 	MarkUserVerified(ctx context.Context, userID int64) error
+	UpdatePassword(ctx context.Context, userID int64, newPassword string) error
 }
 
 type LoginRequest struct {
@@ -40,4 +41,11 @@ type LoginRequest struct {
 type LoginResponse struct {
 	AccessToken string `json:"access_token"`
 	IsVerified bool `json:"is_verified"`
+}
+type ForgotPasswordRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+type ResetPasswordRequest struct {
+	NewPassword string `json:"new_password" validate:"required,gte=8"`
 }
