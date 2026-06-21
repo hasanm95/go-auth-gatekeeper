@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net"
 	"net/http"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 func RateLimitMiddleware(redisClient *redis.Client, limit int, window time.Duration, keyPrefix string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip := r.RemoteAddr
+			ip := getClientIP(r)
 			key := keyPrefix + ":" + ip
 			count, err := redisClient.Incr(r.Context(), key).Result()
 
@@ -31,4 +32,12 @@ func RateLimitMiddleware(redisClient *redis.Client, limit int, window time.Durat
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func getClientIP(r *http.Request) string {
+    host, _, err := net.SplitHostPort(r.RemoteAddr)
+    if err != nil {
+        return r.RemoteAddr
+    }
+    return host
 }

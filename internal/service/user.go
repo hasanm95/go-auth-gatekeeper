@@ -51,8 +51,12 @@ func (s *UserService) RegisterUser(ctx context.Context, email string, password s
 
 	verificationToken, err := GenerateToken(user.ID, s.cfg.SecretKey, 60 * time.Minute, "email_verification")
 
-	verificationLink := s.cfg.BaseURL + "/verify?token=" + verificationToken
-	log.Printf("VERIFICATION LINK for %s: %s", email, verificationLink)
+	if err != nil {
+		log.Printf("failed to generate verification token for %s: %v", email, err)
+	} else {
+		verificationLink := s.cfg.BaseURL + "/verify?token=" + verificationToken
+		log.Printf("VERIFICATION LINK for %s: %s", email, verificationLink)
+	}
 
 	return user, nil
 }
@@ -61,10 +65,10 @@ func (s *UserService) LoginUser(ctx context.Context, email, password string) (st
 	user, err := s.repo.GetUserByEmail(ctx, email)
 
 	if err != nil {
-		if !errors.Is(err, model.ErrUserNotFound) {
+		if errors.Is(err, model.ErrUserNotFound) {
 			return "", "", false, model.ErrInvalidCredentials
 		}
-		return "", "", false, err 
+		return "", "", false, fmt.Errorf("looking up user: %w", err)
 	}
 
 	isPasswordOk := CheckPassword(password, user.PasswordHash)
@@ -246,7 +250,9 @@ func (s * UserService) ResetPassword (ctx context.Context, tokenString string, n
 		return err
 	}
 
-	s.BlacklistToken(ctx, tokenString, claims.ExpiresAt.Time)
+	if blacklistErr := s.BlacklistToken(ctx, tokenString, claims.ExpiresAt.Time); blacklistErr != nil {
+		log.Printf("failed to blacklist used reset token for user %d: %v", claims.UserID, blacklistErr)
+	}
 
 	return nil
 }

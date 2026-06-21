@@ -250,6 +250,7 @@ func (h *Handler) VerifyEmail(w http.ResponseWriter, r *http.Request){
 
 	if err != nil {
 		http.Error(w, "invalid or expired verifiaction link", http.StatusBadRequest)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
